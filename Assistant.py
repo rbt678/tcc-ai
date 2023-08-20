@@ -214,5 +214,5 @@ def processar_pergunta(pergunta):
 
 if __name__=="__main__":
     db_manager = ChromaDBManager("baseDados", "colecao5")
-    assistant = Assistant("Documentacao_ChromaDB.docx", db_manager, "credentials/apiKey")
+    assistant = Assistant(db_manager, "credentials/apiKey")
     #assistant.add_document_into_collection("Documentacao_ChromaDB.docx")
