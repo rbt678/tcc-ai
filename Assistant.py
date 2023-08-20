@@ -6,6 +6,10 @@ from chromadb import PersistentClient
 from sentence_transformers import SentenceTransformer
 
 class ChromaDBManager:
+    """
+    Gerencia operações relacionadas ao ChromaDB, como consulta e inserção.
+    """
+
     def __init__(self, path:str, collection_name:str, embedding_function="all-MiniLM-L6-v2"):
         """
         Inicializa a classe ChromaDBManager para gerenciar uma coleção no ChromaDB.
@@ -14,38 +18,38 @@ class ChromaDBManager:
         :param collection_name: Nome da coleção no banco de dados.
         :param embedding_function: Nome da função de embedding. Padrão é "all-MiniLM-L6-v2".
         """
-
-        # Inicialização do modelo de embedding se for o padrão
-        if embedding_function=="all-MiniLM-L6-v2":
+        # Se a função de embedding for o padrão, inicialize o modelo
+        if embedding_function == "all-MiniLM-L6-v2":
             self.model = SentenceTransformer("all-MiniLM-L6-v2")
             ef = self.__funcao_embbeding
-        else: return False
+        else: 
+            return False
 
-        # Conexão com o banco de dados e obtenção ou criação da coleção
+        # Estabelece conexão com o banco de dados e obtém ou cria a coleção
         self.client = PersistentClient(path=path)
         self.collection = self.client.get_or_create_collection(name=collection_name, embedding_function=ef)
 
     def __funcao_embbeding(self, textos:list[str]) -> list[str]:
         """
-        Calcula os embeddings para uma lista de textos.
+        Calcula os embeddings para uma lista de textos usando SentenceTransformer.
         
-        :param textos: Lista de textos para os quais os embeddings são calculados.
+        :param textos: Lista de textos.
         :return: Lista de embeddings.
         """
         return self.model.encode(sentences=textos).tolist()
 
     def get_max_id(self) -> int:
         """
-        Obtém o maior ID presente na coleção.
+        Obtém o ID máximo da coleção.
         
         :return: O próximo ID disponível na coleção.
         """
         ids_str = self.collection.get()["ids"]
         return max([int(num) for num in ids_str]) + 1 if ids_str else 0
-    
+
     def add_na_collection(self, list_ids, list_texts):
         """
-        Adiciona documentos na coleção.
+        Adiciona documentos à coleção.
         
         :param list_ids: Lista de IDs.
         :param list_texts: Lista de textos/documentos.
@@ -54,25 +58,27 @@ class ChromaDBManager:
 
     def query(self, query_texts:str, n_results:int = 5) -> dict:
         """
-        Realiza uma consulta na coleção.
+        Consulta a coleção pelo texto da consulta.
         
         :param query_texts: Texto da consulta.
-        :param n_results: Número de resultados a serem retornados. Padrão é 5.
+        :param n_results: Número de resultados desejados. Padrão é 5.
         :return: Resultados da consulta.
         """
         return self.collection.query(query_texts=query_texts, n_results=n_results)
 
 
 class Assistant:
+    """
+    Classe auxiliar para interagir com o modelo GPT-3 e ChromaDB.
+    """
+
     def __init__(self, db_manager: ChromaDBManager, api_key_path:str):
         """
-        Inicializa a classe Assistant para interagir com o GPT-3 usando um banco de dados.
-
-        :param caminho_docx: Caminho para o arquivo DOCX.
+        Inicializa a classe Assistant.
+        
         :param db_manager: Instância da classe ChromaDBManager.
-        :param api_key_path: Caminho para o arquivo que contém a chave da API OpenAI.
+        :param api_key_path: Caminho para a chave da API OpenAI.
         """
-        #self.caminho_docx = caminho_docx
         self.db_manager = db_manager
         self.openai_api_key = self._ler_arquivo(api_key_path)
 
@@ -94,10 +100,10 @@ class Assistant:
     @staticmethod
     def _extrair_texto_docx(caminho:str) -> str:
         """
-        Extrai o texto de um arquivo DOCX.
+        Extrai texto de um arquivo DOCX.
         
         :param caminho: Caminho do arquivo DOCX.
-        :return: Texto extraído do arquivo.
+        :return: Texto extraído.
         """
         doc = Document(caminho)
         return '\n'.join(parag.text for parag in doc.paragraphs)
