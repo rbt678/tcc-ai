@@ -8,7 +8,6 @@ from sentence_transformers import SentenceTransformer
 from chromadb.config import Settings
 
 class ChromaDBManager:
-
     def __init__(self, path:str, collection_name:str, embedding_function="all-MiniLM-L6-v2"):
         if embedding_function == "all-MiniLM-L6-v2":
             self.model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -59,11 +58,11 @@ class Assistant:
         self.pasta_database = pasta_database
         self.colecao = colecao
         self.db_manager = ChromaDBManager(pasta_database, colecao)
-        self.openai_api_key = self.__ler_arquivo(api_key_path)
+        self.openai_api_key = self.ler_arquivo(api_key_path)
         self.historico_atual = []
 
     @staticmethod
-    def __ler_arquivo(caminho:str) -> str:
+    def ler_arquivo(caminho:str) -> str:
         try:
             with open(caminho, "r") as file:
                 return file.read().strip()
@@ -148,8 +147,8 @@ class Assistant:
 
 
 
-if __name__=="__main__":
-    assistente = Assistant()
-    #print(assistente.atualizar_documentos())
-    #print(assistente.db_manager.client.list_collections())
-    print(assistente.query("O que é ChromaDB?"))
+# if __name__=="__main__":
+#     assistente = Assistant()
+#     #print(assistente.atualizar_documentos())
+#     #print(assistente.db_manager.client.list_collections())
+#     print(assistente.query("O que é ChromaDB?"))
