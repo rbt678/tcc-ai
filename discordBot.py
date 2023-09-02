@@ -22,7 +22,6 @@ async def on_message(message:discord.Message):
         if message.content == "GPT!Parar":
             pessoas_ativas.remove(message.author.id)
             await message.channel.send("Conversa com o GPT Desativado!")
-
             return
 
         #envia a mensagem para o assistente
