@@ -52,4 +52,4 @@ async def on_message(message:discord.Message):
 
 
     
-client.run(assistente.ler_arquivo("credentials/DISCORD_TOKEN"))
+client.run(Assistant.ler_arquivo("credentials/DISCORD_TOKEN"))

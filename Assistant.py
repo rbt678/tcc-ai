@@ -3,9 +3,26 @@ import os
 from re import sub
 from docx import Document
 from spacy import load
+from spacy.language import Language
 from chromadb import PersistentClient
 from sentence_transformers import SentenceTransformer
 from chromadb.config import Settings
+
+
+def ler_arquivo(caminho:str) -> str:
+    try:
+        with open(caminho, "r") as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        print(f"O arquivo '{caminho}' não foi encontrado.")
+        return ""
+    
+def preprocessar_docx(doc) -> Language:
+        nlp = load("en_core_web_sm")
+        text = '\n'.join(parag.text for parag in doc.paragraphs)
+        clean_text = sub(r'\W+', ' ', text).lower()
+        return nlp(clean_text)
+    
 
 class ChromaDBManager:
     def __init__(self, path:str, collection_name:str, embedding_function="all-MiniLM-L6-v2"):
@@ -13,20 +30,13 @@ class ChromaDBManager:
             self.model = SentenceTransformer("all-MiniLM-L6-v2")
             ef = self.__funcao_embbeding
         else: 
-            return False
+            return
 
         self.client = PersistentClient(path=path, settings=Settings(allow_reset=True))
         self.collection = self.client.get_or_create_collection(name=collection_name, embedding_function=ef)
 
     def __funcao_embbeding(self, textos:list[str]) -> list[str]:
         return self.model.encode(sentences=textos).tolist()
-    
-    def __preprocessar_docx(self, doc):
-        nlp = load("en_core_web_sm")
-        text = '\n'.join(parag.text for parag in doc.paragraphs)
-        clean_text = sub(r'\W+', ' ', text).lower()
-
-        return nlp(clean_text)
     
     def get_max_id(self) -> int:
         ids_str = self.collection.get()["ids"]
@@ -39,7 +49,7 @@ class ChromaDBManager:
         for filename in os.listdir(path):
             if filename.endswith(".docx"):
                 doc = Document(os.path.join(path, filename))
-                preprocess = self.__preprocessar_docx(doc)
+                preprocess = preprocessar_docx(doc)
                 sentences.extend([sent.text for sent in preprocess.sents])
 
         if sentences==[]:
@@ -58,17 +68,8 @@ class Assistant:
         self.pasta_database = pasta_database
         self.colecao = colecao
         self.db_manager = ChromaDBManager(pasta_database, colecao)
-        self.openai_api_key = self.ler_arquivo(api_key_path)
+        self.openai_api_key = ler_arquivo(api_key_path)
         self.historico_atual = []
-
-    @staticmethod
-    def ler_arquivo(caminho:str) -> str:
-        try:
-            with open(caminho, "r") as file:
-                return file.read().strip()
-        except FileNotFoundError:
-            print(f"O arquivo '{caminho}' não foi encontrado.")
-            return ""
 
     def enviar_gpt(self, system_role:str, database:str, quest:str, collection_response) -> dict:
         openai.api_key = self.openai_api_key
@@ -86,8 +87,6 @@ class Assistant:
             {"role": "user", "content": f"'database':\n###\n{database}\n###\n\n 'historico':\n###\n{historico_string}\n###\n\n Pergunta do usuário: {quest}\n"}
         ]
 
-        
-        
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=prompt,
@@ -100,7 +99,7 @@ class Assistant:
         
         return {'response': response, 'prompt': prompt, 'collection_response': collection_response}
     
-    def gpt_tradutor_en(self, pergunta:str):
+    def gpt_tradutor_en(self, pergunta:str) -> dict:
         openai.api_key = self.openai_api_key
         prompt=[{"role": "system","content": "Por favor traduza para o inglês tudo que o usuário enviar. E se o usuário enviar algo em inglês repita exatamente o que ele disse."},
                 {"role": "user","content": "I like guarana, and you?"},
@@ -145,10 +144,8 @@ class Assistant:
         self.historico_atual.extend(historico)
         
 
-
-
-# if __name__=="__main__":
-#     assistente = Assistant()
-#     #print(assistente.atualizar_documentos())
-#     #print(assistente.db_manager.client.list_collections())
-#     print(assistente.query("O que é ChromaDB?"))
+if __name__=="__main__":
+    assistente = Assistant()
+    #print(assistente.atualizar_documentos())
+    #print(assistente.db_manager.client.list_collections())
+    #print(assistente.query("O que é ChromaDB?"))
