@@ -19,6 +19,8 @@ async def on_message(message:discord.Message):
         return
     
     if message.author.id in pessoas_ativas:
+        print(f"\n\nMensagem do usuário: {message.content}\n\n")
+
         if message.content == "GPT!Parar":
             pessoas_ativas.remove(message.author.id)
             await message.channel.send("Conversa com o GPT Desativado!")
@@ -38,7 +40,6 @@ async def on_message(message:discord.Message):
         assistente.salvar_historico_atual(dict_historico)
 
         #printar o prompt, a resposta da coleção e a mensagem que o usuário enviou
-        print(f"Mensagem do usuário: {message.content}\n\n")
         print(f"Prompt: {process_return['prompt']}\n\n")
         print(f"Collection Response: {process_return['collection_response']}\n\n")
 
