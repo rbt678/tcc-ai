@@ -3,7 +3,7 @@ import Assistant
 
 intents = discord.Intents.default()
 intents.message_content = True
-assistente = Assistant.Assistant()
+assistente = Assistant.Assistant(nome_da_empresa="Clinica Dente Saudável")
 
 client = discord.Client(intents=intents)
 pessoas_ativas = []

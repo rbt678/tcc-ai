@@ -2,8 +2,9 @@ import openai
 import os
 from docx import Document
 from chromadb import PersistentClient
-from sentence_transformers import SentenceTransformer
+from chromadb.utils import embedding_functions
 from chromadb.config import Settings
+from spacy import load
 
 
 def ler_arquivo(caminho:str) -> str:
@@ -14,9 +15,22 @@ def ler_arquivo(caminho:str) -> str:
         print(f"O arquivo '{caminho}' não foi encontrado.")
         return ""
     
+def separar_sentencas(textos) -> list[str]:
+    nlp = load("pt_core_news_lg")
+    docs = [nlp(t) for t in textos]
+    sentencas = []
+    for doc in docs:
+        tokens = []
+        for token in doc:
+            if not token.is_stop and not token.is_punct:
+                tokens.append(token.lemma_)
+        sentencas.append(" ".join(tokens))
+    return sentencas
+    
 def preprocessar_docx(doc, tradutor=None) -> list[str]:
         documento = '\n'.join(parag.text for parag in doc.paragraphs)
         textos = documento.split("####")
+        textos = separar_sentencas(textos)
 
         if tradutor:
             textos_traduzidos = []
@@ -29,18 +43,9 @@ def preprocessar_docx(doc, tradutor=None) -> list[str]:
     
 
 class ChromaDBManager:
-    def __init__(self, path:str, collection_name:str, embedding_function="all-MiniLM-L6-v2"):
-        if embedding_function == "all-MiniLM-L6-v2":
-            self.model = SentenceTransformer("all-MiniLM-L6-v2")
-            ef = self.__funcao_embbeding
-        else: 
-            return
-
+    def __init__(self, path:str, collection_name:str, ef):
         self.client = PersistentClient(path=path, settings=Settings(allow_reset=True))
         self.collection = self.client.get_or_create_collection(name=collection_name, embedding_function=ef)
-
-    def __funcao_embbeding(self, textos:list[str]) -> list[str]:
-        return self.model.encode(sentences=textos).tolist()
     
     def get_max_id(self) -> int:
         ids_str = self.collection.get()["ids"]
@@ -68,12 +73,14 @@ class ChromaDBManager:
 
 
 class Assistant:
-    def __init__(self, api_key_path:str = "credentials/apiKey", pasta_database:str = "dataBase", colecao:str = "colecao1"):
+    def __init__(self, nome_da_empresa:str, api_key_path:str = "credentials/apiKey", pasta_database:str = "dataBase", colecao:str = "colecao1"):
+        self.nome_da_empresa = nome_da_empresa
         self.pasta_database = pasta_database
         self.colecao = colecao
-        self.db_manager = ChromaDBManager(pasta_database, colecao)
         self.openai_api_key = ler_arquivo(api_key_path)
         self.historico_atual = []
+        self.openai_ef = embedding_functions.OpenAIEmbeddingFunction(api_key=self.openai_api_key, model_name="text-embedding-ada-002")
+        self.db_manager = ChromaDBManager(path=pasta_database, collection_name=colecao, ef=self.openai_ef)
 
     def enviar_gpt(self, system_role:str, database:str, quest:str, collection_response) -> dict:
         openai.api_key = self.openai_api_key
@@ -85,6 +92,8 @@ class Assistant:
                 historico_string += f"User: {dict['content']}\n"
             if dict["role"] == "assistant":
                 historico_string += f"Assistant: {dict['content']}\n"
+
+        historico_string = separar_sentencas([historico_string])
 
         prompt = [
             {"role": "system", "content": system_role},
@@ -124,13 +133,15 @@ class Assistant:
 
         return {'response': response, 'prompt': prompt}
 
-    def query(self, pergunta:str) -> dict:
-        pergunta_eng = self.gpt_tradutor_en(pergunta=pergunta)["response"]["choices"][0]["message"]["content"]
-        collection_response = self.db_manager.query(query_texts=pergunta_eng, n_results=5)
+    def query(self, pergunta:str, traduzir:bool=False) -> dict:
+        if traduzir:
+            pergunta_eng = self.gpt_tradutor_en(pergunta=pergunta)["response"]["choices"][0]["message"]["content"]
+            
+        collection_response = self.db_manager.query(query_texts= pergunta if not traduzir else pergunta_eng, n_results=5)
         collection_database = collection_response["documents"][0]
         system_role = (
-            "Você é um assistente inteligente, educado e dedicado da empresa Hakunamatata, que responde perguntas do usuário. "
-            "Você possui 'dataBase' para buscar informações e 'historico' para lembrar a conversa com o usuário. "
+            f"Você é um assistente inteligente, educado e dedicado da {self.nome_da_empresa}, que responde perguntas do usuário. "
+            "Você possui 'dataBase' para buscar informações e 'historico' para lembrar da conversa com o usuário. "
             "Se você não souber como responder o usuário, responda com: 'Infelizmente essa informação não está na minha base de dados.' "
             "Você deve responder usando um máximo de 150 tokens. "
             "Agora, com base nos seguintes dados, responda a pergunta do usuário: "
@@ -139,9 +150,17 @@ class Assistant:
         return self.enviar_gpt(system_role=system_role, database=collection_database, quest=pergunta, collection_response=collection_response)
     
     def atualizar_documentos(self, traduzir:bool = False):
+        print("\nResetando cliente...")
         self.db_manager.client.reset()
-        self.db_manager = ChromaDBManager(self.pasta_database, self.colecao)
+        print("\nCliente resetado.")
+        
+        print("\nAtualizando cliente...")
+        self.db_manager = ChromaDBManager(path=self.pasta_database, collection_name=self.colecao, ef=self.openai_ef)
+        print("\nCliente atualizado.")
+        
+        print("\nLendo todos os documentos...")
         self.db_manager.ler_todos_docxs("documentos", self.gpt_tradutor_en if traduzir else None)
+        print("\nDocumentos atualizados.")
 
 
     def salvar_historico_atual(self, historico):
@@ -149,7 +168,7 @@ class Assistant:
         
 
 if __name__=="__main__":
-    # assistente = Assistant()
+    # assistente = Assistant(nome_da_empresa="Hakuna Empreendimentos")
     # print(assistente.atualizar_documentos())
     # print(assistente.db_manager.client.list_collections())
     # print(assistente.query("O que é ChromaDB?"))
