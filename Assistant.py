@@ -171,5 +171,6 @@ if __name__=="__main__":
     # assistente = Assistant(nome_da_empresa="Hakuna Empreendimentos")
     # print(assistente.atualizar_documentos())
     # print(assistente.db_manager.client.list_collections())
+    # print(assistente.db_manager.collection.get())
     # print(assistente.query("O que é ChromaDB?"))
     pass
