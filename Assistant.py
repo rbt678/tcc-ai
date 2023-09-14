@@ -1,9 +1,6 @@
 import openai
 import os
-from re import sub
 from docx import Document
-from spacy import load
-from spacy.language import Language
 from chromadb import PersistentClient
 from sentence_transformers import SentenceTransformer
 from chromadb.config import Settings
@@ -17,11 +14,18 @@ def ler_arquivo(caminho:str) -> str:
         print(f"O arquivo '{caminho}' não foi encontrado.")
         return ""
     
-def preprocessar_docx(doc) -> Language:
-        nlp = load("en_core_web_sm")
-        text = '\n'.join(parag.text for parag in doc.paragraphs)
-        clean_text = sub(r'\W+', ' ', text).lower()
-        return nlp(clean_text)
+def preprocessar_docx(doc, tradutor=None) -> list[str]:
+        documento = '\n'.join(parag.text for parag in doc.paragraphs)
+        textos = documento.split("####")
+
+        if tradutor:
+            textos_traduzidos = []
+            for doc in textos:
+                textos_traduzidos.append(tradutor(doc)["response"]["choices"][0]["message"]["content"])
+            
+            return textos_traduzidos
+        else:
+            return textos
     
 
 class ChromaDBManager:
@@ -43,14 +47,14 @@ class ChromaDBManager:
         
         return max([int(num) for num in ids_str]) + 1 if ids_str else 0
 
-    def ler_todos_docxs(self, path:str) -> list[str]:
+    def ler_todos_docxs(self, path:str, tradutor=None) -> list[str]:
         sentences = []
 
         for filename in os.listdir(path):
             if filename.endswith(".docx"):
                 doc = Document(os.path.join(path, filename))
-                preprocess = preprocessar_docx(doc)
-                sentences.extend([sent.text for sent in preprocess.sents])
+                preprocess = preprocessar_docx(doc, tradutor)
+                sentences.extend(preprocess)
 
         if sentences==[]:
             print("Não há arquivos .docx na pasta")
@@ -134,10 +138,10 @@ class Assistant:
 
         return self.enviar_gpt(system_role=system_role, database=collection_database, quest=pergunta, collection_response=collection_response)
     
-    def atualizar_documentos(self):
+    def atualizar_documentos(self, traduzir:bool = False):
         self.db_manager.client.reset()
         self.db_manager = ChromaDBManager(self.pasta_database, self.colecao)
-        self.db_manager.ler_todos_docxs("documentos")
+        self.db_manager.ler_todos_docxs("documentos", self.gpt_tradutor_en if traduzir else None)
 
 
     def salvar_historico_atual(self, historico):
@@ -146,6 +150,7 @@ class Assistant:
 
 if __name__=="__main__":
     assistente = Assistant()
-    #print(assistente.atualizar_documentos())
+    print(assistente.atualizar_documentos())
     #print(assistente.db_manager.client.list_collections())
     #print(assistente.query("O que é ChromaDB?"))
+    pass
