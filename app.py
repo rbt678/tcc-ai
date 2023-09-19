@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, render_template
 import Assistant
 
 app = Flask(__name__)
-assistant = Assistant.Assistant()
+assistant = Assistant.Assistant(nome_da_empresa="Hakunamatata")
 
 @app.route('/')
 def index():
