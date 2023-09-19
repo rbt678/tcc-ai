@@ -19,6 +19,7 @@ async def on_message(message:discord.Message):
         return
     
     if message.author.id in pessoas_ativas:
+        #printar a mensagem do usuário
         print(f"\n\nMensagem do usuário: {message.content}\n\n")
 
         if message.content == "GPT!Parar":
