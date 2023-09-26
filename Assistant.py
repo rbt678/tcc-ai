@@ -73,7 +73,7 @@ class ChromaDBManager:
 
 
 class Assistant:
-    def __init__(self, nome_da_empresa:str, api_key_path:str = "credentials/apiKey", pasta_database:str = "dataBase", colecao:str = "colecao1"):
+    def __init__(self, nome_da_empresa:str, api_key_path:str = "./credentials/apiKey", pasta_database:str = "dataBase", colecao:str = "colecao1"):
         self.nome_da_empresa = nome_da_empresa
         self.pasta_database = pasta_database
         self.colecao = colecao
@@ -168,8 +168,8 @@ class Assistant:
         
 
 if __name__=="__main__":
-    # assistente = Assistant(nome_da_empresa="Hakuna Empreendimentos")
-    # print(assistente.atualizar_documentos())
+    assistente = Assistant(nome_da_empresa="Hakuna Empreendimentos")
+    print(assistente.atualizar_documentos())
     # print(assistente.db_manager.client.list_collections())
     # print(assistente.db_manager.collection.get())
     # print(assistente.query("O que é ChromaDB?"))
