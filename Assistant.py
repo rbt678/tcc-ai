@@ -7,7 +7,7 @@ from chromadb.config import Settings
 from spacy import load
 
 
-def ler_arquivo(caminho:str) -> str:
+def ler_arquivo(caminho:str):
     try:
         with open(caminho, "r") as file:
             return file.read().strip()
@@ -15,7 +15,7 @@ def ler_arquivo(caminho:str) -> str:
         print(f"O arquivo '{caminho}' não foi encontrado.")
         return ""
     
-def separar_sentencas(textos) -> list[str]:
+def separar_sentencas(textos):
     nlp = load("pt_core_news_lg")
     docs = [nlp(t) for t in textos]
     sentencas = []
@@ -27,7 +27,7 @@ def separar_sentencas(textos) -> list[str]:
         sentencas.append(" ".join(tokens))
     return sentencas
     
-def preprocessar_docx(doc, tradutor=None) -> list[str]:
+def preprocessar_docx(doc, tradutor=None):
         documento = '\n'.join(parag.text for parag in doc.paragraphs)
         textos = documento.split("####")
         textos = separar_sentencas(textos)
@@ -47,12 +47,12 @@ class ChromaDBManager:
         self.client = PersistentClient(path=path, settings=Settings(allow_reset=True))
         self.collection = self.client.get_or_create_collection(name=collection_name, embedding_function=ef)
     
-    def get_max_id(self) -> int:
+    def get_max_id(self):
         ids_str = self.collection.get()["ids"]
         
         return max([int(num) for num in ids_str]) + 1 if ids_str else 0
 
-    def ler_todos_docxs(self, path:str, tradutor=None) -> list[str]:
+    def ler_todos_docxs(self, path:str, tradutor=None):
         sentences = []
 
         for filename in os.listdir(path):
@@ -68,7 +68,7 @@ class ChromaDBManager:
         sentences_ids = [str(i) for i in range(len(sentences))]
         self.collection.add(documents=sentences, ids=sentences_ids)
 
-    def query(self, query_texts:str, n_results:int = 5) -> dict:
+    def query(self, query_texts:str, n_results:int = 5):
         return self.collection.query(query_texts=query_texts, n_results=n_results)
 
 
@@ -82,7 +82,7 @@ class Assistant:
         self.openai_ef = embedding_functions.OpenAIEmbeddingFunction(api_key=self.openai_api_key, model_name="text-embedding-ada-002")
         self.db_manager = ChromaDBManager(path=pasta_database, collection_name=colecao, ef=self.openai_ef)
 
-    def enviar_gpt(self, system_role:str, database:str, quest:str, collection_response) -> dict:
+    def enviar_gpt(self, system_role:str, database:str, quest:str, collection_response):
         openai.api_key = self.openai_api_key
 
         historico = self.historico_atual[-20:]
@@ -112,7 +112,7 @@ class Assistant:
         
         return {'response': response, 'prompt': prompt, 'collection_response': collection_response}
     
-    def gpt_tradutor_en(self, pergunta:str) -> dict:
+    def gpt_tradutor_en(self, pergunta:str):
         openai.api_key = self.openai_api_key
         prompt=[{"role": "system","content": "Por favor traduza para o inglês tudo que o usuário enviar. E se o usuário enviar algo em inglês repita exatamente o que ele disse."},
                 {"role": "user","content": "I like guarana, and you?"},
@@ -133,7 +133,7 @@ class Assistant:
 
         return {'response': response, 'prompt': prompt}
 
-    def query(self, pergunta:str, traduzir:bool=False) -> dict:
+    def query(self, pergunta:str, traduzir:bool=False):
         if traduzir:
             pergunta_eng = self.gpt_tradutor_en(pergunta=pergunta)["response"]["choices"][0]["message"]["content"]
             
