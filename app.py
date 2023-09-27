@@ -13,6 +13,9 @@ def index():
 def ask():
     data = request.json
     user_message = data["message"]
+    if user_message == "reset_docs":
+        assistant.atualizar_documentos()
+        return jsonify({"response": "Documentos resetados"})
     process_return = assistant.query(pergunta=user_message)
     respostaGPT = process_return["response"]["choices"][0]["message"]["content"]
     promptEnviado = str(process_return["prompt"])

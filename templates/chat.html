@@ -105,6 +105,18 @@
         button:hover {
             background-color: #0056b3;
         }
+
+        
+        @keyframes blink {
+            50% {
+                font-size: 1.5em; 
+            }
+        }
+
+        .loading:after {
+            content: "...\A0"; 
+            animation: blink 1s infinite;
+        }
     </style>
 </head>
 <body>   
@@ -162,6 +174,24 @@
         }
     }
 
+    function showLoading() {
+        var chatbox = document.getElementById("chatbox");
+        var loadingDiv = document.createElement("div");
+        loadingDiv.className = "message ia";
+        loadingDiv.classList.add("loading");
+        loadingDiv.id = "loading";
+        loadingDiv.textContent = "";
+        chatbox.appendChild(loadingDiv);
+    }
+
+    function hideLoading() {
+        var loadingDiv = document.getElementById("loading");
+        if(loadingDiv) {
+            loadingDiv.remove(); 
+        }
+    }
+
+
     function sendMessage() {
         var input = document.getElementById("userinput");
         var message = input.value;
@@ -174,6 +204,7 @@
             updateDebugBoxContent();
         }else{
             updateChatbox(message, "You");
+            showLoading();
 
             fetch("/ask", {
                 method: "POST",
@@ -184,6 +215,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                hideLoading();
                 updateChatbox(data.response, "IA");
                 dadoAtual = data;
                 updateDebugBoxContent();
