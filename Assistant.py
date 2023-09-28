@@ -5,8 +5,33 @@ from chromadb import PersistentClient
 from chromadb.utils import embedding_functions
 from chromadb.config import Settings
 from spacy import load
+import psutil
+import time
 
+def monitor(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
 
+        # Obter uso de CPU e memória antes da execução da função
+        start_cpu = psutil.cpu_percent()
+        start_memory = psutil.virtual_memory().percent
+
+        result = func(*args, **kwargs)
+
+        # Obter uso de CPU e memória após a execução da função
+        end_cpu = psutil.cpu_percent()
+        end_memory = psutil.virtual_memory().percent
+
+        execution_time = time.time() - start_time
+
+        print(f"Função {func.__name__} executada em {execution_time:.2f} segundos.")
+        print(f"Início - Uso de CPU: {start_cpu}%, Memória: {start_memory}%")
+        print(f"Fim   - Uso de CPU: {end_cpu}%, Memória: {end_memory}%")
+
+        return result
+    return wrapper
+
+@monitor
 def ler_arquivo(caminho:str):
     try:
         with open(caminho, "r") as file:
@@ -15,8 +40,9 @@ def ler_arquivo(caminho:str):
         print(f"O arquivo '{caminho}' não foi encontrado.")
         return ""
     
+@monitor
 def separar_sentencas(textos):
-    nlp = load("pt_core_news_lg")
+    nlp = load("pt_core_news_sm")
     docs = [nlp(t) for t in textos]
     sentencas = []
     for doc in docs:
@@ -26,7 +52,8 @@ def separar_sentencas(textos):
                 tokens.append(token.lemma_)
         sentencas.append(" ".join(tokens))
     return sentencas
-    
+
+@monitor
 def preprocessar_docx(doc, tradutor=None):
         documento = '\n'.join(parag.text for parag in doc.paragraphs)
         textos = documento.split("####")
@@ -51,7 +78,8 @@ class ChromaDBManager:
         ids_str = self.collection.get()["ids"]
         
         return max([int(num) for num in ids_str]) + 1 if ids_str else 0
-
+    
+    @monitor
     def ler_todos_docxs(self, path:str, tradutor=None):
         sentences = []
 
@@ -82,6 +110,7 @@ class Assistant:
         self.openai_ef = embedding_functions.OpenAIEmbeddingFunction(api_key=self.openai_api_key, model_name="text-embedding-ada-002")
         self.db_manager = ChromaDBManager(path=pasta_database, collection_name=colecao, ef=self.openai_ef)
 
+    @monitor
     def enviar_gpt(self, system_role:str, database:str, quest:str, collection_response):
         openai.api_key = self.openai_api_key
 
@@ -112,6 +141,7 @@ class Assistant:
         
         return {'response': response, 'prompt': prompt, 'collection_response': collection_response}
     
+    @monitor
     def gpt_tradutor_en(self, pergunta:str):
         openai.api_key = self.openai_api_key
         prompt=[{"role": "system","content": "Por favor traduza para o inglês tudo que o usuário enviar. E se o usuário enviar algo em inglês repita exatamente o que ele disse."},
@@ -132,7 +162,8 @@ class Assistant:
         )
 
         return {'response': response, 'prompt': prompt}
-
+    
+    @monitor
     def query(self, pergunta:str, traduzir:bool=False):
         if traduzir:
             pergunta_eng = self.gpt_tradutor_en(pergunta=pergunta)["response"]["choices"][0]["message"]["content"]
@@ -149,6 +180,7 @@ class Assistant:
 
         return self.enviar_gpt(system_role=system_role, database=collection_database, quest=pergunta, collection_response=collection_response)
     
+    @monitor
     def atualizar_documentos(self, traduzir:bool = False):
         print("\nResetando cliente...")
         self.db_manager.client.reset()
